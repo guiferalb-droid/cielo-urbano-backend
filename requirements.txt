@@ -1,3 +1,6 @@
 flask
 flask-cors
-
+skyfield
+pytz
+numpy
+timezonefinder

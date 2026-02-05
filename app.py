@@ -29,7 +29,7 @@ def calcular_pases_iss(lat, lon):
     observador = wgs84.latlon(lat, lon)
 
     ahora = datetime.utcnow().replace(tzinfo=pytz.utc)
-    despues = ahora + timedelta(hours=72)
+    despues = ahora + timedelta(hours=24)
 
     t0 = ts.from_datetime(ahora)
     t1 = ts.from_datetime(despues)
@@ -44,45 +44,42 @@ def calcular_pases_iss(lat, lon):
     zona = tf.timezone_at(lat=lat, lng=lon)
     tz = pytz.timezone(zona) if zona else pytz.utc
 
-for t, e in zip(tiempos, eventos):
-    hora_utc = t.utc_datetime()
-    hora_local = hora_utc.astimezone(tz)
-
     difference = iss - observador
 
-    if e == 0:  # aparece
-        alt, az, _ = difference.at(t).altaz()
+    for t, e in zip(tiempos, eventos):
+        hora_utc = t.utc_datetime()
+        hora_local = hora_utc.astimezone(tz)
 
-        pase = {
-            "date": hora_local.date().isoformat(),
-            "start": hora_local.strftime("%H:%M"),
-            "az_start": round(az.degrees)
-        }
+        if e == 0:  # aparece
+            alt, az, _ = difference.at(t).altaz()
+            pase = {
+                "date": hora_local.date().isoformat(),
+                "start": hora_local.strftime("%H:%M"),
+                "az_start": round(az.degrees)
+            }
 
-    elif e == 1:  # punto más alto
-        alt, az, _ = difference.at(t).altaz()
-        pase["max_altitude"] = round(alt.degrees)
+        elif e == 1:  # punto más alto
+            alt, az, _ = difference.at(t).altaz()
+            pase["max_altitude"] = round(alt.degrees)
 
-        sol_alt, _, _ = (sun - observador).at(t).altaz()
-        pase["sun_altitude"] = round(sol_alt.degrees, 1)
+            # Altura del Sol (clave para visibilidad real)
+            sol_alt, _, _ = (load('de421.bsp')['sun'] - observador).at(t).altaz()
+            pase["sun_altitude"] = round(sol_alt.degrees, 1)
 
-    elif e == 2:  # desaparece
-        alt, az, _ = difference.at(t).altaz()
+        elif e == 2:  # desaparece
+            alt, az, _ = difference.at(t).altaz()
+            pase["end"] = hora_local.strftime("%H:%M")
+            pase["az_end"] = round(az.degrees)
 
-        pase["end"] = hora_local.strftime("%H:%M")
-        pase["az_end"] = round(az.degrees)
+            pase["visible"] = (
+                pase.get("max_altitude", 0) >= 30 and
+                pase.get("sun_altitude", 0) < -6
+            )
 
-        pase["visible"] = (
-            pase.get("max_altitude", 0) >= 30 and
-            pase.get("sun_altitude", 0) < -6
-        )
-
-        pases.append(pase)
-
-
-
+            pases.append(pase)
 
     return pases[:15]
+
 
 
 @app.route("/iss/next-passes", methods=["GET"])

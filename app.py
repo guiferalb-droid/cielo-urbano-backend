@@ -29,7 +29,7 @@ def calcular_pases_iss(lat, lon):
     observador = wgs84.latlon(lat, lon)
 
     ahora = datetime.utcnow().replace(tzinfo=pytz.utc)
-    despues = ahora + timedelta(hours=24)
+    despues = ahora + timedelta(hours=48)  # 48h para tener más pases
 
     t0 = ts.from_datetime(ahora)
     t1 = ts.from_datetime(despues)
@@ -38,11 +38,11 @@ def calcular_pases_iss(lat, lon):
         observador, t0, t1, altitude_degrees=10.0
     )
 
-    pases = []
-    pase = {}
-
     zona = tf.timezone_at(lat=lat, lng=lon)
     tz = pytz.timezone(zona) if zona else pytz.utc
+
+    pases = []
+    pase = None
 
     difference = iss - observador
 
@@ -58,27 +58,23 @@ def calcular_pases_iss(lat, lon):
                 "az_start": round(az.degrees)
             }
 
-        elif e == 1:  # punto más alto
+        elif e == 1 and pase:
             alt, az, _ = difference.at(t).altaz()
             pase["max_altitude"] = round(alt.degrees)
 
-            # Altura del Sol (clave para visibilidad real)
-            sol_alt, _, _ = (load('de421.bsp')['sun'] - observador).at(t).altaz()
-            pase["sun_altitude"] = round(sol_alt.degrees, 1)
-
-        elif e == 2:  # desaparece
+        elif e == 2 and pase:
             alt, az, _ = difference.at(t).altaz()
             pase["end"] = hora_local.strftime("%H:%M")
             pase["az_end"] = round(az.degrees)
 
-            pase["visible"] = (
-                pase.get("max_altitude", 0) >= 30 and
-                pase.get("sun_altitude", 0) < -6
-            )
+            # Visibilidad REAL (altura suficiente)
+            pase["visible"] = pase.get("max_altitude", 0) >= 30
 
             pases.append(pase)
+            pase = None
 
     return pases[:15]
+
 
 
 

@@ -27,7 +27,7 @@ def calcular_pases_iss(lat, lon):
     observador = wgs84.latlon(lat, lon)
 
     ahora = datetime.utcnow().replace(tzinfo=pytz.utc)
-    despues = ahora + timedelta(hours=24)
+    despues = ahora + timedelta(hours=72)
 
     t0 = ts.from_datetime(ahora)
     t1 = ts.from_datetime(despues)
@@ -72,7 +72,7 @@ def calcular_pases_iss(lat, lon):
 
 
 
-    return pases[:10]
+    return pases[:15]
 
 
 @app.route("/iss/next-passes", methods=["GET"])

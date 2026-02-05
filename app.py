@@ -31,7 +31,7 @@ def calcular_pases_iss(lat, lon):
     observador = wgs84.latlon(lat, lon)
 
     ahora = datetime.utcnow().replace(tzinfo=pytz.utc)
-    despues = ahora + timedelta(hours=48)  # 48h para tener más pases
+    despues = ahora + timedelta(hours=48)
 
     t0 = ts.from_datetime(ahora)
     t1 = ts.from_datetime(despues)
@@ -52,44 +52,44 @@ def calcular_pases_iss(lat, lon):
         hora_utc = t.utc_datetime()
         hora_local = hora_utc.astimezone(tz)
 
+        # ☀️ Altura del Sol (SIEMPRE)
+        sol_alt, sol_az, _ = (
+            earth + observador
+        ).at(t).observe(sun).apparent().altaz()
+
+        sun_altitude = round(sol_alt.degrees)
+
         if e == 0:  # aparece
             alt, az, _ = difference.at(t).altaz()
             pase = {
                 "date": hora_local.date().isoformat(),
                 "start": hora_local.strftime("%H:%M"),
-                "az_start": round(az.degrees)
+                "az_start": round(az.degrees),
+                "sun_altitude": sun_altitude
             }
 
-        elif e == 1:  # punto más alto del pase
-  	    # Altura máxima de la EEI
-	    alt, az, _ = (iss - observador).at(t).altaz()
-	    pase["max_altitude"] = round(alt.degrees)
-
-	    # ☀️ Altura del Sol en ese momento (CLAVE)
-	    sol_alt, sol_az, _ = (
-            earth + observador
-	    ).at(t).observe(sun).apparent().altaz()
-
-	    sun_altitude = round(sol_alt.degrees)
-	    pase["sun_altitude"] = sun_altitude
-
+        elif e == 1 and pase:
+            alt, az, _ = difference.at(t).altaz()
+            pase["max_altitude"] = round(alt.degrees)
+            pase["sun_altitude"] = sun_altitude
 
         elif e == 2 and pase:
             alt, az, _ = difference.at(t).altaz()
             pase["end"] = hora_local.strftime("%H:%M")
             pase["az_end"] = round(az.degrees)
+            pase["sun_altitude"] = sun_altitude
 
-            # Visibilidad REAL (altura suficiente)
+            # 🌙 Visibilidad REAL
             pase["visible"] = (
-   		pase.get("max_altitude", 0) >= 30
-		and sun_altitude < -6
-	    )
-
+                pase.get("max_altitude", 0) >= 30
+                and sun_altitude < -6
+            )
 
             pases.append(pase)
             pase = None
 
     return pases[:15]
+
 
 
 

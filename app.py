@@ -1,8 +1,7 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
-from skyfield.api import load, wgs84
-eph = load("de421.bsp")
-sun = eph["sun"]
+from skyfield.api import load, wgs84, N, W, E, S
+from skyfield.api import load
 from datetime import datetime, timedelta
 import pytz
 from timezonefinder import TimezoneFinder
@@ -18,6 +17,9 @@ satellites = load.tle_file(
 )
 iss = [s for s in satellites if "ISS" in s.name][0]
 tf = TimezoneFinder()
+eph = load('de421.bsp')
+sun = eph['sun']
+earth = eph['earth']
 
 
 @app.route("/")
@@ -58,9 +60,19 @@ def calcular_pases_iss(lat, lon):
                 "az_start": round(az.degrees)
             }
 
-        elif e == 1 and pase:
-            alt, az, _ = difference.at(t).altaz()
-            pase["max_altitude"] = round(alt.degrees)
+        elif e == 1:  # punto más alto del pase
+  	    # Altura máxima de la EEI
+	    alt, az, _ = (iss - observador).at(t).altaz()
+	    pase["max_altitude"] = round(alt.degrees)
+
+	    # ☀️ Altura del Sol en ese momento (CLAVE)
+	    sol_alt, sol_az, _ = (
+            earth + observador
+	    ).at(t).observe(sun).apparent().altaz()
+
+	    sun_altitude = round(sol_alt.degrees)
+	    pase["sun_altitude"] = sun_altitude
+
 
         elif e == 2 and pase:
             alt, az, _ = difference.at(t).altaz()
@@ -68,7 +80,11 @@ def calcular_pases_iss(lat, lon):
             pase["az_end"] = round(az.degrees)
 
             # Visibilidad REAL (altura suficiente)
-            pase["visible"] = pase.get("max_altitude", 0) >= 30
+            pase["visible"] = (
+   		pase.get("max_altitude", 0) >= 30
+		and sun_altitude < -6
+	    )
+
 
             pases.append(pase)
             pase = None

@@ -46,20 +46,31 @@ def calcular_pases_iss(lat, lon):
         hora_utc = t.utc_datetime()
         hora_local = hora_utc.astimezone(tz)
 
+        difference = iss - observador
+
         if e == 0:  # aparece
+            alt, az, _ = difference.at(t).altaz()
+
             pase = {
                 "date": hora_local.date().isoformat(),
-                "start": hora_local.strftime("%H:%M")
+                "start": hora_local.strftime("%H:%M"),
+                "az_start": round(az.degrees)
             }
 
         elif e == 1:  # punto más alto
-            alt, az, _ = (iss - observador).at(t).altaz()
+            alt, az, _ = difference.at(t).altaz()
             pase["max_altitude"] = round(alt.degrees)
 
         elif e == 2:  # desaparece
+            alt, az, _ = difference.at(t).altaz()
+
             pase["end"] = hora_local.strftime("%H:%M")
+            pase["az_end"] = round(az.degrees)
             pase["visible"] = pase.get("max_altitude", 0) >= 30
+
             pases.append(pase)
+
+
 
     return pases[:10]
 
@@ -80,19 +91,6 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
 
-# Azimut al inicio del pase
-alt_start, az_start, _ = difference.at(t_start).altaz()
 
-# Azimut al final del pase
-alt_end, az_end, _ = difference.at(t_end).altaz()
-
-# Tomamos un punto ligeramente después del inicio
-t_appear = t_start + 10 / 86400   # +10 segundos
-
-# Y un punto ligeramente antes del final
-t_disappear = t_end - 10 / 86400  # -10 segundos
-
-alt_a, az_a, _ = difference.at(t_appear).altaz()
-alt_d, az_d, _ = difference.at(t_disappear).altaz()
 
 

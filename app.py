@@ -61,7 +61,7 @@ def calcular_pases_iss(lat, lon):
             pase["visible"] = pase.get("max_altitude", 0) >= 30
             pases.append(pase)
 
-    return pases[:5]
+    return pases[:10]
 
 
 @app.route("/iss/next-passes", methods=["GET"])
@@ -79,3 +79,20 @@ def iss_next_passes():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
+
+# Azimut al inicio del pase
+alt_start, az_start, _ = difference.at(t_start).altaz()
+
+# Azimut al final del pase
+alt_end, az_end, _ = difference.at(t_end).altaz()
+
+# Tomamos un punto ligeramente después del inicio
+t_appear = t_start + 10 / 86400   # +10 segundos
+
+# Y un punto ligeramente antes del final
+t_disappear = t_end - 10 / 86400  # -10 segundos
+
+alt_a, az_a, _ = difference.at(t_appear).altaz()
+alt_d, az_d, _ = difference.at(t_disappear).altaz()
+
+

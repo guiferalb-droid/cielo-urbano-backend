@@ -1,6 +1,8 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from skyfield.api import load, wgs84
+eph = load("de421.bsp")
+sun = eph["sun"]
 from datetime import datetime, timedelta
 import pytz
 from timezonefinder import TimezoneFinder
@@ -58,15 +60,29 @@ def calcular_pases_iss(lat, lon):
             }
 
         elif e == 1:  # punto más alto
-            alt, az, _ = difference.at(t).altaz()
-            pase["max_altitude"] = round(alt.degrees)
+    alt, az, _ = difference.at(t).altaz()
+    pase["max_altitude"] = round(alt.degrees)
+
+    # 🌞 Altura del Sol en ese momento
+    sol_alt, _, _ = (
+        (sun - observador)
+        .at(t)
+        .altaz()
+    )
+
+    pase["sun_altitude"] = round(sol_alt.degrees, 1)
+
 
         elif e == 2:  # desaparece
             alt, az, _ = difference.at(t).altaz()
 
             pase["end"] = hora_local.strftime("%H:%M")
             pase["az_end"] = round(az.degrees)
-            pase["visible"] = pase.get("max_altitude", 0) >= 30
+            pase["visible"] = (
+    		pase.get("max_altitude", 0) >= 30 and
+   		pase.get("sun_altitude", 0) < -6
+	    )
+
 
             pases.append(pase)
 
